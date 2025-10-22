@@ -1,4 +1,4 @@
-import { FitWriter } from '@markw65/fit-file-writer';
+import { FitWriter, keysOf } from '@markw65/fit-file-writer';
 import { fromGarminTimestamp } from './time';
 import { MergedActivity } from './merge';
 
@@ -18,7 +18,7 @@ export function encodeMergedActivity(activity: MergedActivity): Buffer {
   const events = activity.events.length ? activity.events : buildDefaultEvents(activity.records);
 
   const write = (messageKind: string, source: Record<string, any>, lastUse = false) => {
-    const fields = normalizeFields(source, writer);
+    const fields = filterKnownFields(messageKind, normalizeFields(source, writer));
     if (!Object.keys(fields).length) {
       return;
     }
@@ -80,6 +80,41 @@ function normalizeFields(source: Record<string, any>, writer: FitWriter): Record
   }
 
   return normalized;
+}
+
+const allowedFieldCache = new Map<string, Set<string> | null>();
+
+function filterKnownFields(messageKind: string, fields: Record<string, any>): Record<string, any> {
+  const allowed = getAllowedFields(messageKind);
+  if (!allowed) {
+    return fields;
+  }
+
+  const filtered: Record<string, any> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (allowed.has(key)) {
+      filtered[key] = value;
+    }
+  }
+
+  return filtered;
+}
+
+function getAllowedFields(messageKind: string): Set<string> | null {
+  if (allowedFieldCache.has(messageKind)) {
+    return allowedFieldCache.get(messageKind) ?? null;
+  }
+
+  try {
+    const list = keysOf(messageKind) ?? [];
+    const allowed = new Set<string>(list.map((field) => field.toString()));
+    allowedFieldCache.set(messageKind, allowed);
+    return allowed;
+  } catch (error) {
+    console.warn(`Unable to resolve allowed fields for message ${messageKind}`, error);
+    allowedFieldCache.set(messageKind, null);
+    return null;
+  }
 }
 
 function buildDefaultEvents(records: Array<Record<string, any>>): Array<Record<string, any>> {
