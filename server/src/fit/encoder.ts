@@ -1,4 +1,5 @@
 import { FitWriter } from '@markw65/fit-file-writer';
+import { ALLOWED_MESSAGE_FIELDS, isLatLongFieldName } from './allowedFields';
 import { fromGarminTimestamp } from './time';
 import { MergedActivity } from './merge';
 
@@ -70,7 +71,7 @@ function normalizeFields(
       continue;
     }
 
-    if (isLatLongField(messageKind, key) && typeof value === 'number') {
+    if (isLatLongFieldName(key) && typeof value === 'number') {
       normalized[key] = writer.latlng((value * Math.PI) / 180);
       continue;
     }
@@ -92,7 +93,7 @@ function normalizeFields(
 }
 
 function filterKnownFields(messageKind: string, fields: Record<string, any>): Record<string, any> {
-  const allowed = ALLOWED_FIELDS[messageKind];
+  const allowed = ALLOWED_MESSAGE_FIELDS[messageKind];
   if (!allowed) {
     return fields;
   }
@@ -108,133 +109,6 @@ function filterKnownFields(messageKind: string, fields: Record<string, any>): Re
   return filtered;
 }
 
-function isLatLongField(messageKind: string, key: string): boolean {
-  if (!LAT_LNG_FIELDS.has(key)) {
-    return false;
-  }
-
-  if (messageKind === 'record' || messageKind === 'lap' || messageKind === 'session') {
-    return true;
-  }
-
-  if (messageKind === 'activity' || messageKind === 'event') {
-    return key === 'nec_lat' || key === 'nec_long' || key === 'swc_lat' || key === 'swc_long';
-  }
-
-  return false;
-}
-
-const LAT_LNG_FIELDS = new Set([
-  'position_lat',
-  'position_long',
-  'start_position_lat',
-  'start_position_long',
-  'end_position_lat',
-  'end_position_long',
-  'nec_lat',
-  'nec_long',
-  'swc_lat',
-  'swc_long'
-]);
-
-const ALLOWED_FIELDS: Record<string, readonly string[]> = {
-  record: [
-    'timestamp',
-    'position_lat',
-    'position_long',
-    'gps_accuracy',
-    'altitude',
-    'distance',
-    'heart_rate',
-    'enhanced_speed',
-    'speed',
-    'cadence',
-    'power',
-    'temperature',
-    'vertical_speed'
-  ],
-  event: ['timestamp', 'event', 'event_type', 'event_group', 'data', 'data16', 'data32', 'timer_trigger'],
-  lap: [
-    'timestamp',
-    'event',
-    'event_type',
-    'start_time',
-    'lap_trigger',
-    'total_elapsed_time',
-    'total_timer_time',
-    'total_moving_time',
-    'total_distance',
-    'total_calories',
-    'avg_speed',
-    'max_speed',
-    'avg_heart_rate',
-    'max_heart_rate',
-    'min_heart_rate',
-    'avg_power',
-    'max_power',
-    'sport',
-    'sub_sport',
-    'message_index'
-  ],
-  session: [
-    'timestamp',
-    'start_time',
-    'total_distance',
-    'total_timer_time',
-    'total_elapsed_time',
-    'total_moving_time',
-    'total_calories',
-    'total_work',
-    'avg_speed',
-    'max_speed',
-    'avg_heart_rate',
-    'max_heart_rate',
-    'min_heart_rate',
-    'avg_power',
-    'max_power',
-    'normalized_power',
-    'avg_altitude',
-    'max_altitude',
-    'min_altitude',
-    'total_ascent',
-    'total_descent',
-    'avg_temperature',
-    'first_lap_index',
-    'num_laps',
-    'sport',
-    'sub_sport',
-    'event',
-    'event_type',
-    'trigger',
-    'nec_lat',
-    'nec_long',
-    'swc_lat',
-    'swc_long',
-    'message_index'
-  ],
-  activity: [
-    'timestamp',
-    'local_timestamp',
-    'num_sessions',
-    'type',
-    'event',
-    'event_type',
-    'total_timer_time',
-    'total_distance',
-    'total_calories',
-    'total_ascent',
-    'total_descent'
-  ],
-  file_id: [
-    'type',
-    'manufacturer',
-    'product',
-    'serial_number',
-    'time_created',
-    'garmin_product',
-    'product_name'
-  ]
-};
 
 function buildDefaultEvents(records: Array<Record<string, any>>): Array<Record<string, any>> {
   if (!records.length) {

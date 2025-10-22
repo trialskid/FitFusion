@@ -1,4 +1,5 @@
 import { encodeMergedActivity } from '../fit/encoder';
+import { RECORD_FIELD_WHITELIST } from '../fit/allowedFields';
 import { mergeActivities } from '../fit/merge';
 import { parseFitBuffer } from '../fit/parser';
 import {
@@ -63,23 +64,30 @@ async function parseInputs(masterBuffer: Buffer, overlayBuffer: Buffer) {
   return { master, overlay };
 }
 
-function summarizeFields(masterRecords: Array<Record<string, any>>, overlayRecords: Array<Record<string, any>>): AvailableFieldSummary {
+function summarizeFields(
+  masterRecords: Array<Record<string, any>>,
+  overlayRecords: Array<Record<string, any>>
+): AvailableFieldSummary {
   return {
-    master: extractFieldNames(masterRecords),
-    overlay: extractFieldNames(overlayRecords)
+    master: extractFieldNames(masterRecords, RECORD_FIELD_WHITELIST),
+    overlay: extractFieldNames(overlayRecords, RECORD_FIELD_WHITELIST)
   };
 }
 
-function extractFieldNames(records: Array<Record<string, any>>): string[] {
+function extractFieldNames(records: Array<Record<string, any>>, whitelist?: Set<string>): string[] {
   const fields = new Set<string>();
   records.forEach((record) => {
     if (!record) {
       return;
     }
     Object.keys(record).forEach((key) => {
-      if (key) {
-        fields.add(key);
+      if (!key) {
+        return;
       }
+      if (whitelist && !whitelist.has(key)) {
+        return;
+      }
+      fields.add(key);
     });
   });
   return Array.from(fields).sort();
