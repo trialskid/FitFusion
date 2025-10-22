@@ -1,0 +1,16 @@
+# Node dependencies
+server/node_modules
+web/node_modules
+
+# Build output
+server/dist
+web/dist
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor directories
+.vscode
+.idea
+.DS_Store
