@@ -77,20 +77,60 @@ describe('mergeActivities', () => {
 
   it('replaces moving time fields when enabled', () => {
     const master = buildParseResult({
-      sessions: [{ total_moving_time: 100, timestamp: BASE_TIME, start_time: BASE_TIME }],
-      laps: [{ total_moving_time: 50, timestamp: BASE_TIME, start_time: BASE_TIME }],
+      sessions: [
+        { total_moving_time: 100, total_timer_time: 110, timestamp: BASE_TIME, start_time: BASE_TIME }
+      ],
+      laps: [
+        { total_moving_time: 50, total_timer_time: 55, timestamp: BASE_TIME, start_time: BASE_TIME }
+      ],
       records: [recordAt(0), recordAt(1)]
     });
     const overlay = buildParseResult({
-      sessions: [{ total_moving_time: 80, timestamp: BASE_TIME, start_time: BASE_TIME }],
-      laps: [{ total_moving_time: 40, timestamp: BASE_TIME, start_time: BASE_TIME }],
+      sessions: [
+        { total_moving_time: 80, total_timer_time: 80, timestamp: BASE_TIME, start_time: BASE_TIME }
+      ],
+      laps: [{ total_moving_time: 40, total_timer_time: 40, timestamp: BASE_TIME, start_time: BASE_TIME }],
       records: [recordAt(0), recordAt(1)]
     });
 
     const { merged } = mergeActivities(master, overlay, defaultOptions);
 
     expect(merged.sessions[0].total_moving_time).toBe(80);
+    expect(merged.sessions[0].total_timer_time).toBe(80);
     expect(merged.laps[0].total_moving_time).toBe(40);
+    expect(merged.laps[0].total_timer_time).toBe(40);
+  });
+
+  it('falls back to timer time when moving time missing', () => {
+    const master = buildParseResult({
+      sessions: [
+        { total_moving_time: 100, total_timer_time: 110, timestamp: BASE_TIME, start_time: BASE_TIME }
+      ],
+      laps: [
+        { total_moving_time: 60, total_timer_time: 65, timestamp: BASE_TIME, start_time: BASE_TIME },
+        {
+          total_moving_time: 40,
+          total_timer_time: 45,
+          timestamp: new Date(BASE_TIME.getTime() + 1000),
+          start_time: new Date(BASE_TIME.getTime() + 1000)
+        }
+      ],
+      records: [recordAt(0), recordAt(1)]
+    });
+    const overlay = buildParseResult({
+      sessions: [{ total_timer_time: 80, timestamp: BASE_TIME, start_time: BASE_TIME }],
+      laps: [{ total_timer_time: 40, timestamp: BASE_TIME, start_time: BASE_TIME }],
+      records: [recordAt(0), recordAt(1)]
+    });
+
+    const { merged } = mergeActivities(master, overlay, defaultOptions);
+
+    expect(merged.sessions[0].total_moving_time).toBe(80);
+    expect(merged.sessions[0].total_timer_time).toBe(80);
+    expect(merged.laps[0].total_moving_time).toBe(40);
+    expect(merged.laps[0].total_timer_time).toBe(40);
+    expect(merged.laps[1].total_moving_time).toBe(40);
+    expect(merged.laps[1].total_timer_time).toBe(45);
   });
 
   it('does not update metrics when options disabled', () => {

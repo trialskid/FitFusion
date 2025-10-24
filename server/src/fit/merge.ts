@@ -247,10 +247,12 @@ function clipRecords(
   });
 }
 
-function replaceMovingTime<T extends { total_moving_time?: number }>(
-  targets: T[],
-  sources: T[] | undefined
-) {
+const MOVING_TIME_FIELDS: Array<'total_moving_time' | 'total_timer_time'> = [
+  'total_moving_time',
+  'total_timer_time'
+];
+
+function replaceMovingTime<T extends Record<string, any>>(targets: T[], sources: T[] | undefined) {
   if (!sources || !sources.length) {
     return;
   }
@@ -258,11 +260,43 @@ function replaceMovingTime<T extends { total_moving_time?: number }>(
   for (let index = 0; index < targets.length; index += 1) {
     const target = targets[index];
     const source = sources[index];
-    if (!target || !source || source.total_moving_time == null) {
+    if (!target || !source) {
       continue;
     }
-    target.total_moving_time = source.total_moving_time;
+
+    const targetFields = target as Record<string, any>;
+    const sourceFields = source as Record<string, any>;
+
+    let replacement: number | undefined;
+
+    for (const field of MOVING_TIME_FIELDS) {
+      const value = extractMovingTime(sourceFields[field]);
+      if (value === undefined) {
+        continue;
+      }
+      targetFields[field] = value;
+      if (replacement === undefined) {
+        replacement = value;
+      }
+    }
+
+    if (replacement === undefined) {
+      continue;
+    }
+
+    for (const field of MOVING_TIME_FIELDS) {
+      if (sourceFields[field] == null) {
+        targetFields[field] = replacement;
+      }
+    }
   }
+}
+
+function extractMovingTime(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  return undefined;
 }
 
 function cloneRecords(records: FitRecordMessage[]): FitRecordMessage[] {
